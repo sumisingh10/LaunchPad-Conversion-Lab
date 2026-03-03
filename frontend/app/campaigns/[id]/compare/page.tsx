@@ -56,6 +56,9 @@ export default function ComparePage() {
   const [optimizationReady, setOptimizationReady] = useState(false);
   const [showOptimizationPanel, setShowOptimizationPanel] = useState(false);
   const [optimizeNotice, setOptimizeNotice] = useState<string | null>(null);
+  const [dataSignature, setDataSignature] = useState("");
+  const [adviceSignature, setAdviceSignature] = useState<string | null>(null);
+  const [optimizationSignature, setOptimizationSignature] = useState<string | null>(null);
 
   async function refresh(
     _preferredVariantId?: number,
@@ -80,10 +83,14 @@ export default function ComparePage() {
     setCampaign(c);
     setVariants(v);
     setMetrics(nextMetrics);
+    const variantPart = v.map((item) => item.id).sort((a, b) => a - b).join(",");
+    setDataSignature(`${variantPart}|${nextMetrics.length}`);
     if (advice && !v.some((item) => item.id === advice.best_variant_id)) {
       setAdvice(null);
       setShowAdvicePanel(false);
       setAdviceNotice(null);
+      setAdviceReady(false);
+      setAdviceSignature(null);
     }
     if (optimizeResult && !v.some((item) => item.id === optimizeResult.variant_id)) {
       setOptimizeResult(null);
@@ -91,6 +98,8 @@ export default function ComparePage() {
       setOptimizedVariantId(null);
       setShowOptimizationPanel(false);
       setOptimizeNotice(null);
+      setOptimizationReady(false);
+      setOptimizationSignature(null);
     }
     if (!selectedVariantId && v.length) {
       setSelectedVariantId(baselineId && v.some((item) => item.id === baselineId) ? baselineId : v[0].id);
@@ -112,6 +121,9 @@ export default function ComparePage() {
       if (parsed.advice && typeof parsed.advice.best_variant_id === "number") {
         setAdvice(parsed.advice);
         setShowAdvicePanel(Boolean(parsed.showAdvicePanel ?? true));
+        setAdviceReady(Boolean(parsed.adviceReady ?? false));
+        setAdviceNotice(typeof parsed.adviceNotice === "string" ? parsed.adviceNotice : null);
+        setAdviceSignature(typeof parsed.adviceSignature === "string" ? parsed.adviceSignature : null);
       }
       if (parsed.optimizeResult && typeof parsed.optimizeResult.variant_id === "number") {
         setOptimizeResult(parsed.optimizeResult);
@@ -119,6 +131,9 @@ export default function ComparePage() {
         setNewVariantName(parsed.newVariantName || "");
         setOptimizedVariantId(parsed.optimizedVariantId || null);
         setShowOptimizationPanel(Boolean(parsed.showOptimizationPanel ?? false));
+        setOptimizationReady(Boolean(parsed.optimizationReady ?? false));
+        setOptimizeNotice(typeof parsed.optimizeNotice === "string" ? parsed.optimizeNotice : null);
+        setOptimizationSignature(typeof parsed.optimizationSignature === "string" ? parsed.optimizationSignature : null);
       }
       if (typeof parsed.adviceJobId === "string" && parsed.adviceJobId) {
         setAdviceJobId(parsed.adviceJobId);
@@ -128,10 +143,38 @@ export default function ComparePage() {
         setOptimizeJobId(parsed.optimizeJobId);
         setOptimizeRunning(Boolean(parsed.optimizeRunning));
       }
+      if (parsed.advice && parsed.showAdvicePanel === false && parsed.adviceReady !== true) {
+        setAdviceReady(true);
+        setAdviceNotice("Best-variant analysis is ready. Click 'Reveal Recommendation'.");
+      }
+      if (parsed.optimizeResult && parsed.showOptimizationPanel === false && parsed.optimizationReady !== true) {
+        setOptimizationReady(true);
+        setOptimizeNotice("Optimization is ready. Click 'Reveal Optimization' to review and save it.");
+      }
     } catch {
       // Ignore malformed local cache.
     }
   }, [id, localStateKey]);
+
+  useEffect(() => {
+    if (!dataSignature) return;
+    if (advice && adviceSignature && adviceSignature !== dataSignature) {
+      setAdvice(null);
+      setAdviceReady(false);
+      setAdviceNotice(null);
+      setShowAdvicePanel(false);
+      setAdviceSignature(null);
+    }
+    if (optimizeResult && optimizationSignature && optimizationSignature !== dataSignature) {
+      setOptimizeResult(null);
+      setOptimizeSummary(null);
+      setOptimizedVariantId(null);
+      setOptimizationReady(false);
+      setOptimizeNotice(null);
+      setShowOptimizationPanel(false);
+      setOptimizationSignature(null);
+    }
+  }, [dataSignature, advice, adviceSignature, optimizeResult, optimizationSignature]);
 
   useEffect(() => {
     if (typeof window === "undefined" || Number.isNaN(id)) return;
@@ -140,11 +183,17 @@ export default function ComparePage() {
       JSON.stringify({
         goalPrompt,
         advice,
+        adviceReady,
+        adviceNotice,
+        adviceSignature,
         showAdvicePanel,
         optimizeResult,
         optimizeSummary,
         newVariantName,
         optimizedVariantId,
+        optimizationReady,
+        optimizeNotice,
+        optimizationSignature,
         showOptimizationPanel,
         adviceJobId,
         adviceRunning,
@@ -157,11 +206,17 @@ export default function ComparePage() {
     localStateKey,
     goalPrompt,
     advice,
+    adviceReady,
+    adviceNotice,
+    adviceSignature,
     showAdvicePanel,
     optimizeResult,
     optimizeSummary,
     newVariantName,
     optimizedVariantId,
+    optimizationReady,
+    optimizeNotice,
+    optimizationSignature,
     showOptimizationPanel,
     adviceJobId,
     adviceRunning,
@@ -185,6 +240,7 @@ export default function ComparePage() {
             setSelectedVariantId(status.result.best_variant_id);
           }
           setAdviceReady(true);
+          setAdviceSignature(dataSignature || null);
           setAdviceNotice("Best-variant analysis is ready. Click 'Reveal Recommendation'.");
           setShowAdvicePanel(false);
           setActionTick((v) => v + 1);
@@ -208,7 +264,7 @@ export default function ComparePage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [id, adviceJobId]);
+  }, [id, adviceJobId, dataSignature]);
 
   useEffect(() => {
     if (!optimizeJobId) return;
@@ -235,6 +291,7 @@ export default function ComparePage() {
               : null
           );
           setOptimizationReady(true);
+          setOptimizationSignature(dataSignature || null);
           setOptimizeNotice("Optimization is ready. Click 'Reveal Optimization' to review and save it.");
           const candidateName = `Variant ${String.fromCharCode(65 + Math.min(variants.length, 25))}`;
           setNewVariantName(candidateName);
@@ -262,7 +319,7 @@ export default function ComparePage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [id, optimizeJobId, variants.length]);
+  }, [id, optimizeJobId, variants.length, dataSignature]);
 
   if (!campaign) return <div className="rounded-xl border bg-white p-6 text-sm text-slate-500">Loading compare studio...</div>;
   const baselineVariantId = Number(campaign.constraints_json?.baseline_variant_id || 0) || null;
