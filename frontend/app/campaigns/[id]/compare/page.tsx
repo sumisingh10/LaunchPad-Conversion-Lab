@@ -330,6 +330,31 @@ export default function ComparePage() {
     if (variantId === baselineVariantId) return "Baseline";
     return found.name;
   };
+  const humanizeOptimizationNarrative = (text: string) => {
+    let output = text || "";
+    output = output.replace(/\b[Vv]ariant\s*#?\s*(\d+)\b/g, (_match, idText) => {
+      const idNumber = Number(idText);
+      return variantLabel(Number.isNaN(idNumber) ? null : idNumber);
+    });
+    const pathTokens = [
+      "hero.headline",
+      "hero.subheadline",
+      "hero.cta_text",
+      "hero.trust_callout",
+      "banner.text",
+      "banner.badge",
+      "bullets.0",
+      "bullets.1",
+      "bullets.2",
+      "meta.rationale",
+      "product image block",
+    ];
+    for (const token of pathTokens) {
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      output = output.replace(new RegExp(escaped, "gi"), humanLabel(token));
+    }
+    return output;
+  };
 
   return (
     <div className="space-y-4">
@@ -546,8 +571,8 @@ export default function ComparePage() {
             {optimizeSummary ? (
               <div className="mt-1 rounded border border-emerald-300 bg-white/60 p-2 text-xs text-emerald-900">
                 <p><span className="font-semibold">Changed area:</span> {humanLabel(optimizeSummary.target)}</p>
-                <p><span className="font-semibold">Why:</span> {optimizeSummary.rationale}</p>
-                <p><span className="font-semibold">Expected effect:</span> {optimizeSummary.hypothesis}</p>
+                <p><span className="font-semibold">Why:</span> {humanizeOptimizationNarrative(optimizeSummary.rationale)}</p>
+                <p><span className="font-semibold">Expected effect:</span> {humanizeOptimizationNarrative(optimizeSummary.hypothesis)}</p>
               </div>
             ) : null}
             <p className="mt-2 text-emerald-800">Name this optimized variant (required), then open it in Build.</p>
