@@ -41,10 +41,32 @@ It lets teams create campaign landing-page variants, run KPI simulations, ask Co
 - Python 3.11+ (local backend)
 - Codex CLI installed and authenticated for CLI provider mode
 
-Install Codex CLI (if not already installed):
+Helpful install commands:
+
+macOS (Homebrew):
 
 ```bash
+brew install --cask docker
+brew install node@20 python@3.11 openssl
 npm install -g @openai/codex
+```
+
+Ubuntu/Debian:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin nodejs npm python3.11 python3.11-venv openssl
+sudo npm install -g @openai/codex
+```
+
+Verify installs:
+
+```bash
+docker --version
+docker compose version
+node --version
+python3.11 --version
+codex --version
 ```
 
 ## Quick Start (Docker)
@@ -185,11 +207,6 @@ Set `CODEX_PROVIDER=api` and configure one of:
 - `CODEX_API_KEY`
 - `CODEX_API_KEY_FILE`
 - `CODEX_API_KEY_ENCRYPTED` + decryption key settings
-
-## Why `SECRET_KEY` Is Still Required
-
-`SECRET_KEY` is for **your app's JWT auth** (login/session token signing), not Codex authentication.
-Even when Codex uses CLI login, FastAPI still needs `SECRET_KEY` to issue and verify user tokens.
 
 ## Testing
 
