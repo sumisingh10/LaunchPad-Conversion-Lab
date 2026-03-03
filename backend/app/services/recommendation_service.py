@@ -294,18 +294,31 @@ class RecommendationService:
 
     def auto_optimize(self, campaign_id: int, user: User, user_goal: str, preferred_variant_id: int | None = None):
         """Apply one automated optimization recommendation for compare flow."""
-        proposed = self.propose_improvements(campaign_id, user, user_goal=user_goal)
+        campaign = self.campaign_repo.get_for_user(campaign_id, user.id)
+        if not campaign:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+        variants = self.variant_repo.list_for_campaign(campaign_id)
+        if not variants:
+            raise HTTPException(status_code=400, detail="No variants available for optimization")
+
+        allowed_variant_ids = {item.id for item in variants}
+        target_variant_id = preferred_variant_id if preferred_variant_id in allowed_variant_ids else None
+        if target_variant_id is None:
+            baseline_variant_id = 0
+            if isinstance(campaign.constraints_json, dict):
+                baseline_variant_id = int(campaign.constraints_json.get("baseline_variant_id") or 0)
+            target_variant_id = baseline_variant_id if baseline_variant_id in allowed_variant_ids else variants[0].id
+
+        proposed = self.propose_improvements(
+            campaign_id,
+            user,
+            user_goal=user_goal,
+            selected_variant_id=target_variant_id,
+        )
         if not proposed:
             raise HTTPException(status_code=400, detail="No applicable recommendations produced")
 
-        candidate = None
-        if preferred_variant_id:
-            for rec in proposed:
-                if rec.variant_id == preferred_variant_id:
-                    candidate = rec
-                    break
-        if candidate is None:
-            candidate = proposed[0]
+        candidate = proposed[0]
 
         self.approve(candidate.id, user)
         applied = self.apply(candidate.id, user)

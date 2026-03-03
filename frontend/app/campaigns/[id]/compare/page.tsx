@@ -265,6 +265,14 @@ export default function ComparePage() {
   }, [id, optimizeJobId, variants.length]);
 
   if (!campaign) return <div className="rounded-xl border bg-white p-6 text-sm text-slate-500">Loading compare studio...</div>;
+  const baselineVariantId = Number(campaign.constraints_json?.baseline_variant_id || 0) || null;
+  const variantLabel = (variantId: number | null | undefined) => {
+    if (!variantId) return "";
+    const found = variants.find((item) => item.id === variantId);
+    if (!found) return `Variant ${variantId}`;
+    if (variantId === baselineVariantId) return "Baseline";
+    return found.name;
+  };
 
   return (
     <div className="space-y-4">
@@ -432,15 +440,23 @@ export default function ComparePage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span>{optimizeNotice}</span>
               {optimizationReady ? (
-                <button
-                  className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
-                  onClick={() => {
-                    setShowOptimizationPanel(true);
-                    setOptimizeNotice(null);
-                  }}
-                >
-                  Reveal Optimization
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
+                    onClick={() => {
+                      setShowOptimizationPanel(true);
+                      setOptimizeNotice(null);
+                    }}
+                  >
+                    Reveal Optimization
+                  </button>
+                  <Link
+                    href={`/campaigns/${id}/build${optimizeResult?.variant_id ? `?variantId=${optimizeResult.variant_id}` : ""}`}
+                    className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
+                  >
+                    Go To Build
+                  </Link>
+                </div>
               ) : (
                 <button
                   className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
@@ -454,7 +470,7 @@ export default function ComparePage() {
         ) : null}
         {advice && showAdvicePanel ? (
           <div className="mt-3 rounded border bg-slate-50 p-3 text-sm">
-            <p className="font-semibold">Recommended Variant: {advice.best_variant_name || `Variant ${advice.best_variant_id}`}</p>
+            <p className="font-semibold">Recommended Variant: {advice.best_variant_name || variantLabel(advice.best_variant_id)}</p>
             <p className="text-slate-700">{advice.rationale}</p>
             <p className="text-xs text-slate-600">Confidence {(advice.confidence * 100).toFixed(0)}% · Next: {advice.next_step}</p>
             <p className="mt-2 text-xs text-slate-700">
@@ -469,7 +485,7 @@ export default function ComparePage() {
         ) : null}
         {optimizeResult && showOptimizationPanel ? (
           <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm">
-            <p className="font-semibold text-emerald-900">Optimization applied to {variants.find((v) => v.id === optimizeResult.variant_id)?.name || `Variant ${optimizeResult.variant_id}`}</p>
+            <p className="font-semibold text-emerald-900">Optimization applied to {variantLabel(optimizeResult.variant_id)}</p>
             {optimizeSummary ? (
               <div className="mt-1 rounded border border-emerald-300 bg-white/60 p-2 text-xs text-emerald-900">
                 <p><span className="font-semibold">Changed area:</span> {humanLabel(optimizeSummary.target)}</p>

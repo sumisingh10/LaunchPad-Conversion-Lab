@@ -123,6 +123,59 @@ def test_trust_focus_returns_three_recommendations_when_phrase_required(client):
         assert "free returns" in str(op["value"]).lower()
 
 
+def test_advise_variant_response_uses_display_names_not_numeric_ids(client, monkeypatch):
+    """Ensure best-variant advice text uses campaign display names instead of raw numeric ids."""
+    headers = signup_and_auth(client)
+    campaign = client.post(
+        "/campaigns",
+        headers=headers,
+        json={
+            "name": "Advice Naming Campaign",
+            "product_title": "Bag",
+            "product_category": "Bags",
+            "product_description": "Desc",
+            "objective": "CTR",
+            "audience_segment": "Segment",
+            "constraints_json": {},
+            "primary_kpi": "CTR",
+            "status": "RUNNING",
+        },
+    ).json()
+    client.post(f"/campaigns/{campaign['id']}/generate-variants", headers=headers)
+    client.post(f"/campaigns/{campaign['id']}/simulate-batch", headers=headers)
+    variants = client.get(f"/campaigns/{campaign['id']}/variants", headers=headers).json()
+    first_id = variants[0]["id"]
+    second_id = variants[1]["id"]
+
+    from app.schemas.advisor import VariantAdviceResponse
+    from app.services.codex_service import CodexService
+
+    def mocked_advise(self, payload):
+        """Return a mocked numeric-id narrative to verify display-name rewriting."""
+        _ = payload
+        return VariantAdviceResponse(
+            best_variant_id=first_id,
+            best_variant_name=f"Variant {first_id}",
+            confidence=0.79,
+            rationale=f"Variant {first_id} beats Variant {second_id} on balanced KPI tradeoffs.",
+            next_step=f"Promote Variant {first_id} and monitor against Variant {second_id}.",
+        )
+
+    monkeypatch.setattr(CodexService, "advise_best_variant", mocked_advise)
+    advised = client.post(
+        f"/campaigns/{campaign['id']}/advise-variants",
+        headers=headers,
+        json={"user_goal": "Maximize conversion quality while keeping bounce under control.", "variant_ids": [first_id, second_id]},
+    )
+    assert advised.status_code == 200
+    body = advised.json()
+    assert body["best_variant_name"] == "Baseline"
+    assert f"Variant {first_id}" not in body["rationale"]
+    assert f"Variant {second_id}" not in body["rationale"]
+    assert "Baseline" in body["rationale"]
+    assert "Baseline" in body["next_step"]
+
+
 def test_guardrail_blocks_overly_large_patch(client, monkeypatch):
     """Verify guardrail blocks overly large patch."""
     headers = signup_and_auth(client)

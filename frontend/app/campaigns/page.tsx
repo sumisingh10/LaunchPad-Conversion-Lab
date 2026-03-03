@@ -6,6 +6,7 @@
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { CampaignForm } from "@/components/CampaignForm";
@@ -15,11 +16,13 @@ import { api } from "@/lib/api";
 import { Campaign, CodexAuthStatus } from "@/lib/types";
 
 export default function CampaignsPage() {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [codexStatus, setCodexStatus] = useState<CodexAuthStatus | null>(null);
+  const [showAllCampaigns, setShowAllCampaigns] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -49,10 +52,7 @@ export default function CampaignsPage() {
     (campaign) => !/(^e2e\b|\bdemo\b)/i.test(campaign.name.trim())
   );
   const baseCampaigns = curatedCampaigns.length ? curatedCampaigns : sortedCampaigns;
-  const uniqueCampaigns = Array.from(
-    new Map(baseCampaigns.map((campaign) => [campaign.name.trim().toLowerCase(), campaign])).values()
-  );
-  const displayCampaigns = uniqueCampaigns.slice(0, 4);
+  const displayCampaigns = showAllCampaigns ? baseCampaigns : baseCampaigns.slice(0, 4);
 
   return (
     <div className="space-y-5">
@@ -93,7 +93,39 @@ export default function CampaignsPage() {
       {error ? <StateBlock message={`Error: ${error}`} /> : null}
       {!loading && campaigns.length === 0 ? <StateBlock message="No campaigns yet" /> : null}
       {campaigns.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white/80 p-3 shadow-[0_6px_20px_rgba(15,23,42,0.04)]">
+            <p className="text-xs text-slate-600">
+              Showing {displayCampaigns.length} of {baseCampaigns.length} campaigns
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {baseCampaigns.length > 4 ? (
+                <button
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                  onClick={() => setShowAllCampaigns((v) => !v)}
+                >
+                  {showAllCampaigns ? "Show Top 4 Campaigns" : "Show All Campaigns"}
+                </button>
+              ) : null}
+              <select
+                defaultValue=""
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
+                onChange={(e) => {
+                  const campaignId = Number(e.target.value);
+                  if (!campaignId) return;
+                  router.push(`/campaigns/${campaignId}/build`);
+                }}
+              >
+                <option value="">Jump to campaign...</option>
+                {baseCampaigns.map((campaign) => (
+                  <option key={`jump-${campaign.id}`} value={campaign.id}>
+                    {campaign.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
           {displayCampaigns.map((campaign, idx) => (
             <div key={campaign.id} className="rounded-2xl border border-slate-200/80 bg-white/85 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-sky-300">
               <p className="text-xs uppercase tracking-wide text-slate-500">{idx === 0 ? "Featured Campaign" : "Campaign"}</p>
@@ -119,7 +151,8 @@ export default function CampaignsPage() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   );
