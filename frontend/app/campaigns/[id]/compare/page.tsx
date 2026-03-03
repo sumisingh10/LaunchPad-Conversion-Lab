@@ -474,7 +474,12 @@ export default function ComparePage() {
             disabled={!!busy || optimizeRunning}
             onClick={async () => {
               setCompareError(null);
+              setOptimizeResult(null);
+              setOptimizeSummary(null);
+              setOptimizedVariantId(null);
+              setNewVariantName("");
               setOptimizationReady(false);
+              setOptimizationSignature(null);
               setShowOptimizationPanel(false);
               setOptimizeNotice("Codex auto-optimization started. You can continue working while it runs.");
               try {
@@ -565,7 +570,7 @@ export default function ComparePage() {
             </div>
           </div>
         ) : null}
-        {optimizeResult && showOptimizationPanel ? (
+        {optimizeResult && showOptimizationPanel && !optimizeRunning ? (
           <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm">
             <p className="font-semibold text-emerald-900">Optimization applied to {variantLabel(optimizeResult.variant_id)}</p>
             {optimizeSummary ? (
