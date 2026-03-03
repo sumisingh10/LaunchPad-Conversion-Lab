@@ -545,12 +545,22 @@ export default function ComparePage() {
                   </Link>
                 </div>
               ) : (
-                <button
-                  className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
-                  onClick={() => setOptimizeNotice(null)}
-                >
-                  Dismiss
-                </button>
+                <div className="flex items-center gap-2">
+                  {optimizedVariantId ? (
+                    <Link
+                      href={`/campaigns/${id}/build?variantId=${optimizedVariantId}`}
+                      className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
+                    >
+                      Go To Build
+                    </Link>
+                  ) : null}
+                  <button
+                    className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-700"
+                    onClick={() => setOptimizeNotice(null)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -608,11 +618,11 @@ export default function ComparePage() {
                       { variant_name: newVariantName.trim() }
                     );
                     setOptimizedVariantId(createdVariant.id);
+                    setOptimizeNotice(`Saved optimized variant "${createdVariant.name}".`);
                     await refresh();
                     setActionTick((v) => v + 1);
                     setShowOptimizationPanel(false);
                     setOptimizationReady(false);
-                    setOptimizeNotice(null);
                   } finally {
                     setBusy(null);
                   }
