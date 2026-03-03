@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+backend/test.db
+backend/launchpad.db
+backend/playwright.db
+frontend/node_modules/
+frontend/.next/
+frontend/playwright-report/
+frontend/test-results/
+.env
+.secrets/
+backend/.env
+frontend/.env.local

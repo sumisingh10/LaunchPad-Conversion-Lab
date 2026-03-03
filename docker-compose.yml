@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: launchpad
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/launchpad
+      USE_SQLITE: "false"
+      FRONTEND_ORIGIN: http://localhost:3000,http://localhost:3100
+      DEMO_RESET_ON_START: "false"
+      CODEX_PROVIDER: cli
+      CODEX_USE_FALLBACK: "false"
+      CODEX_CLI_PATH: codex
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${HOME}/.codex/auth.json:/root/.codex/auth.json:ro
+      - ${HOME}/.codex/config.toml:/root/.codex/config.toml:ro
+    depends_on:
+      - db
+    command: >
+      sh -c "mkdir -p /root/.codex && until alembic upgrade head; do echo 'waiting for db'; sleep 2; done && python -m app.utils.seed_demo && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
